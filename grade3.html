@@ -600,8 +600,8 @@ function renderHome(){
   const h=S.history.slice(-8).reverse();
   $("histBox").innerHTML=h.length?`<table class="hist"><tr><th>日期</th><th>關卡</th><th>類別</th><th>分數</th></tr>${h.map(r=>{const d=new Date(r.d);return `<tr><td>${d.getMonth()+1}/${d.getDate()}</td><td>${r.name}</td><td>${catOf(r)}</td><td>${r.score}${r.pass?" ✓":""}</td></tr>`}).join("")}</table>`:`<p class="note" style="margin:0">還沒有紀錄。從第 1 關開始練習吧！</p>`;
 }
-$("cls").onchange=e=>{S.cls=e.target.value.trim();save();if(!$("idHint").classList.contains("hidden"))needId()};
-$("no").onchange=e=>{S.no=e.target.value.trim();save();if(!$("idHint").classList.contains("hidden"))needId()};
+$("cls").oninput=$("cls").onchange=e=>{S.cls=e.target.value.trim();save();if(!$("idHint").classList.contains("hidden"))needId()};
+$("no").oninput=$("no").onchange=e=>{S.no=e.target.value.trim();save();if(!$("idHint").classList.contains("hidden"))needId()};
 document.querySelectorAll("#tempoSeg button").forEach(b=>b.onclick=()=>{S.tempo=+b.dataset.t;save();renderHome()});
 $("calBtn").onclick=()=>{$("calStatus").textContent="";show("cal")};
 
@@ -1740,7 +1740,7 @@ let preview=false,flushing=false;
 function needId(){
   const ok=/^3\d{2}$/.test(String(S.cls).trim())&&+S.no>=1&&+S.no<=40;
   $("idHint").classList.toggle("hidden",ok);
-  if(!ok){window.scrollTo({top:0,behavior:"smooth"});(String(S.cls).trim()?$("no"):$("cls")).focus()}
+  if(!ok){alert("請先在最上面填好班級（三位數字，例如 301）和座號（1～40），才能開始練習。");window.scrollTo(0,0);(/^3\d{2}$/.test(String(S.cls).trim())?$("no"):$("cls")).focus()}
   return ok;
 }
 function catOf(e){return e.kind==="RC"?"直笛":e.kind==="CH"?"挑戰題":e.kind==="S"?"唱歌":e.kind==="J"?"綜合":String(e.lv).startsWith("M")?"旋律":"節奏"}

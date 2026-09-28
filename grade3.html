@@ -166,6 +166,19 @@ svg.ms .veil{fill:var(--card)}
 svg.ms .vdot{fill:#2F6FE4;opacity:.75}
 :root[data-theme="dark"] svg.ms .vdot{fill:#7AA7FF}
 @media (prefers-color-scheme: dark){svg.ms .vdot{fill:#7AA7FF}}
+.recwrap{display:flex;gap:10px;align-items:stretch}
+.recwrap .staff{flex:1;min-width:0}
+.fingbox{background:var(--card);border:1px solid var(--soft);border-radius:18px;margin-top:14px;padding:8px;display:flex;gap:4px;justify-content:center;align-items:flex-start;flex-wrap:wrap}
+.fingbox:empty{display:none}
+.fing{display:flex;flex-direction:column;align-items:center}
+.fing svg{display:block}
+.fing .body{fill:var(--paper);stroke:var(--ink);stroke-width:2}
+.fing .hole{stroke:var(--ink);stroke-width:2;fill:var(--card)}
+.fing .hole.c{fill:var(--ink)}
+.fing .lab{font-size:11px;fill:var(--muted);text-anchor:middle}
+.fing .nm{font-size:15px;font-weight:800;fill:var(--ink);text-anchor:middle}
+.fing.on .body{stroke:var(--pad-deep);stroke-width:3}
+@media (max-width:560px){.recwrap{flex-direction:column;gap:0}}
 @media (prefers-reduced-motion: reduce){.pad,.beat-light{transition:none}}
 </style>
 </head>
@@ -195,6 +208,7 @@ svg.ms .vdot{fill:#2F6FE4;opacity:.75}
     <button role="tab" id="tabM" data-tab="melody">🎵 旋律</button>
     <button role="tab" id="tabJ" data-tab="combo">🎹 綜合</button>
     <button role="tab" id="tabS" data-tab="sing">🎤 唱歌</button>
+    <button role="tab" id="tabR2" data-tab="rec">🎼 直笛</button>
     <button role="tab" id="tabC" data-tab="chal">⭐ 挑戰題</button>
   </div>
 
@@ -230,6 +244,12 @@ svg.ms .vdot{fill:#2F6FE4;opacity:.75}
     <p class="note" style="margin-top:14px">唱歌關卡會使用麥克風聽你的音高。聲音只在這台裝置上分析，不會上傳；「聽聽我唱的」的錄音也只暫存在這台裝置，離開頁面就消失。請在安靜的地方練習，用「啦」或唱名唱都可以。</p>
     <h2>唱歌關卡</h2>
     <ul class="levels" id="sLevelList"></ul>
+  </div>
+
+  <div id="recPane" class="hidden">
+    <p class="note" style="margin-top:14px">直笛關卡會用麥克風聽你吹的音。請在安靜的地方練習，吹奏時節拍器會停下來，眼睛跟著樂譜上的黃色游標吹。聲音只在這台裝置上分析，不會上傳。</p>
+    <h2>直笛關卡</h2>
+    <ul class="levels" id="rcLevelList"></ul>
   </div>
 
   <div id="chalPane" class="hidden">
@@ -324,6 +344,27 @@ svg.ms .vdot{fill:#2F6FE4;opacity:.75}
   <p class="note" id="sMicNote" style="text-align:center;margin-top:14px"></p>
 </section>
 
+<!-- RECORDER -->
+<section id="recsec" class="hidden">
+  <div class="top">
+    <button class="btn" id="rcBack">← 關卡</button>
+    <strong id="rcTitle"></strong>
+    <div class="dots" id="rcDots"></div>
+  </div>
+  <div class="recwrap"><div class="staff" id="rcStaff"></div><div id="rcFing" class="fingbox"></div></div>
+  <div class="status" id="rcStatus"></div>
+  <div class="result hidden" id="rcResult">
+    <div class="stars" id="rcStars"></div>
+    <div class="score" id="rcScore"></div>
+    <div id="rcHead" style="font-weight:700;margin-top:6px"></div>
+    <ul class="tips" id="rcTips"></ul>
+    <div class="actions"><button class="btn hidden" id="rcHear">▶ 聽聽我吹的</button></div>
+  </div>
+  <div class="actions" id="rcActions"><button class="btn" id="rcDemo">聽示範</button><button class="btn primary" id="rcGo">🎼 開始吹</button></div>
+  <div class="actions hidden" id="rcAfter"><button class="btn" id="rcRetry">再吹一次</button><button class="btn primary" id="rcNext">下一題</button></div>
+  <p class="note" id="rcMicNote" style="text-align:center;margin-top:14px"></p>
+</section>
+
 <!-- COMBO -->
 <section id="combo" class="hidden">
   <div class="top">
@@ -386,7 +427,7 @@ const WEIGHT={Q:3,R:1.2,H:1.6,E:2.2,W:1.2};
 const QN=5, PASS=80;
 
 let S=load();
-function def(){return {cls:"",no:"",tempo:60,calib:null,open:3,mopen:3,jopen:2,sopen:3,tab:"rhythm",free:false,passed:{},history:[],queue:[],chBest:{}}}
+function def(){return {cls:"",no:"",tempo:60,calib:null,open:3,mopen:3,jopen:2,sopen:3,ropen:0,tab:"rhythm",free:false,passed:{},history:[],queue:[],chBest:{}}}
 function load(){try{const v=JSON.parse(localStorage.getItem(KEY));return v?Object.assign(def(),v):def()}catch(e){return def()}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 
@@ -523,7 +564,7 @@ function pos(beat){
 
 /* ---------- UI helpers ---------- */
 const $=id=>document.getElementById(id);
-function show(id){["home","cal","build","practice","mel","combo","sing"].forEach(s=>$(s).classList.toggle("hidden",s!==id));window.scrollTo(0,0)}
+function show(id){["home","cal","build","practice","mel","combo","sing","recsec"].forEach(s=>$(s).classList.toggle("hidden",s!==id));window.scrollTo(0,0)}
 document.querySelectorAll("[data-back]").forEach(b=>b.onclick=()=>{stopAll();renderHome();show("home")});
 
 function available(n){
@@ -534,8 +575,8 @@ function available(n){
 function renderHome(){
   $("cls").value=S.cls;$("no").value=S.no;
   const tb=S.tab||"rhythm";
-  [["tabR","rhythmPane","rhythm"],["tabM","melodyPane","melody"],["tabJ","comboPane","combo"],["tabS","singPane","sing"],["tabC","chalPane","chal"]].forEach(([a,b,k])=>{$(a).setAttribute("aria-selected",String(tb===k));$(b).classList.toggle("hidden",tb!==k)});
-  renderMelList();renderComboList();renderSingList();renderChList();
+  [["tabR","rhythmPane","rhythm"],["tabM","melodyPane","melody"],["tabJ","comboPane","combo"],["tabS","singPane","sing"],["tabR2","recPane","rec"],["tabC","chalPane","chal"]].forEach(([a,b,k])=>{$(a).setAttribute("aria-selected",String(tb===k));$(b).classList.toggle("hidden",tb!==k)});
+  renderMelList();renderComboList();renderSingList();renderRecList();renderChList();
   document.querySelectorAll("#tempoSeg button").forEach(b=>b.setAttribute("aria-pressed",String(+b.dataset.t===S.tempo)));
   $("calText").textContent=S.calib?`已校準（延遲 ${Math.round(S.calib.offset*1000)} 毫秒）`:"還沒校準，建議先校準（約 20 秒）";
   $("calBtn").textContent=S.calib?"重新校準":"校準";
@@ -1308,9 +1349,9 @@ function midiY(m){const o=Math.floor((m-60)/12),r=m-60-o*12,i=Math.floor(r),fr=r
 function median(a){const b=a.slice().sort((x,y)=>x-y);return b.length?b[Math.floor(b.length/2)]:null}
 
 /* recording for playback (stays on device) */
-let rec=null,recBuf=null;
-function recStart(){recBuf=null;$("sHear").classList.add("hidden");try{if(!window.MediaRecorder)return;const ch=[];rec=new MediaRecorder(mic.stream);rec.ondataavailable=e=>{if(e.data&&e.data.size)ch.push(e.data)};
-  rec.onstop=()=>{const bl=new Blob(ch,{type:rec.mimeType||"audio/webm"});bl.arrayBuffer().then(ab=>new Promise((res,rej)=>ctx.decodeAudioData(ab,res,rej))).then(b=>{recBuf=b;$("sHear").classList.remove("hidden")}).catch(()=>{})};rec.start()}catch(e){rec=null}}
+let rec=null,recBuf=null,hearBtn="sHear";
+function recStart(b){hearBtn=b||"sHear";recBuf=null;$(hearBtn).classList.add("hidden");try{if(!window.MediaRecorder)return;const ch=[];rec=new MediaRecorder(mic.stream);rec.ondataavailable=e=>{if(e.data&&e.data.size)ch.push(e.data)};
+  rec.onstop=()=>{const bl=new Blob(ch,{type:rec.mimeType||"audio/webm"});bl.arrayBuffer().then(ab=>new Promise((res,rej)=>ctx.decodeAudioData(ab,res,rej))).then(b=>{recBuf=b;$(hearBtn).classList.remove("hidden")}).catch(()=>{})};rec.start()}catch(e){rec=null}}
 function recStop(){try{if(rec&&rec.state!=="inactive")rec.stop()}catch(e){}}
 $("sHear").onclick=()=>{if(!recBuf)return;ac();const s=ctx.createBufferSource();s.buffer=recBuf;s.connect(ctx.destination);s.start()};
 
@@ -1445,9 +1486,231 @@ function sSummary(){
   $("sAgain").onclick=()=>startSing(sr_.lv);$("sHome").onclick=()=>{releaseMic();renderHome();show("home")};
 }
 
+/* ================= RECORDER (soprano, sounds 8va) ================= */
+const RLEVELS=[
+ {id:1,name:"笛頭吹節奏",week:"三上第8週",codes:"2-II-1、2-II-4｜音E-II-2、音E-II-4",type:"head",cells:["Q","R","H","E"],n:5},
+ {id:2,name:"長音 si、la",week:"三上第9週",codes:"2-II-1、2-II-4｜音E-II-2、音E-II-3",type:"long",pool:[6,5],n:6},
+ {id:3,name:"長音 sol、la、si",week:"三上第14週",codes:"2-II-1｜音E-II-2、音E-II-3",type:"long",pool:[4,5,6],n:6},
+ {id:4,name:"看譜吹奏 si、la、sol",week:"三上第14、17週",codes:"2-II-1｜音E-II-2、音E-II-3、音E-II-4",type:"phrase",cells:["Q","R","H"],pool:[4,5,6],n:5},
+ {id:5,name:"高音 do",week:"三下第7週",codes:"1-II-5、2-II-1｜音E-II-3",type:"mix",newNote:7,cells:["Q","R","H"],pool:[4,5,6,7],n:5},
+ {id:6,name:"高音 re",week:"三下第18週",codes:"1-II-1、2-II-1｜音E-II-2、音E-II-4",type:"mix",newNote:8,cells:["Q","R","H","E"],pool:[4,5,6,7,8],n:5}
+];
+/* fingering (英式/巴洛克式): [thumb, hole1..7] 1 = closed */
+const FING={0:[1,1,1,1,1,1,1,1],1:[1,1,1,1,1,1,1,0],2:[1,1,1,1,1,1,0,0],3:[1,1,1,1,1,0,1,1],4:[1,1,1,1,0,0,0,0],5:[1,1,1,0,0,0,0,0],6:[1,1,0,0,0,0,0,0],7:[1,0,1,0,0,0,0,0],8:[0,0,1,0,0,0,0,0]};
+function fingSvg(n,big){
+  const f=FING[n],sc=big?1:0.72,W=76*sc,H=250*sc;
+  let s=`<svg width="${W}" height="${H}" viewBox="0 0 76 250" role="img" aria-label="${NAMES[n]} 的指法"><text class="nm" x="38" y="16">${NAMES[n]}</text>`;
+  s+=`<rect class="body" x="24" y="24" width="28" height="218" rx="12"/>`;
+  s+=`<circle class="hole${f[0]?" c":""}" cx="10" cy="48" r="7"/><text class="lab" x="10" y="66">背</text>`;
+  for(let i=1;i<=7;i++){const y=48+(i-1)*25+(i>=4?10:0);s+=`<circle class="hole${f[i]?" c":""}" cx="38" cy="${y}" r="${i>=6?6:7.5}"/>`}
+  s+=`<text class="lab" x="66" y="76">左</text><text class="lab" x="66" y="176">右</text>`;
+  return `<div class="fing" data-n="${n}">${s}</svg></div>`;
+}
+function recTone(t,idx,len){
+  const f=FREQ[idx]*2;[[f,"sine",0.22],[f*2,"sine",0.025],[f*3,"triangle",0.01]].forEach(([fr,ty,v])=>{
+    const o=ctx.createOscillator(),g=ctx.createGain();o.type=ty;o.frequency.value=fr;
+    g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(v,t+0.035);g.gain.setValueAtTime(v,t+Math.max(0.05,len-0.07));g.gain.exponentialRampToValueAtTime(0.0001,t+len);
+    o.connect(g).connect(ctx.destination);o.start(t);o.stop(t+len+0.02)});
+}
+function headTone(t,len){const o=ctx.createOscillator(),g=ctx.createGain();o.type="sine";o.frequency.value=1480;
+  g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.18,t+0.03);g.gain.setValueAtTime(0.18,t+Math.max(0.05,len-0.07));g.gain.exponentialRampToValueAtTime(0.0001,t+len);
+  o.connect(g).connect(ctx.destination);o.start(t);o.stop(t+len+0.02)}
+function yinR(buf,sr){
+  const W=512,minLag=Math.floor(sr/2600),maxLag=Math.min(Math.floor(sr/450),buf.length-W-1);
+  const d=new Float32Array(maxLag+1);
+  for(let tau=1;tau<=maxLag;tau++){let s=0;for(let j=0;j<W;j++){const x=buf[j]-buf[j+tau];s+=x*x}d[tau]=s}
+  let run=0,best=-1;const c=new Float32Array(maxLag+1);c[0]=1;
+  for(let tau=1;tau<=maxLag;tau++){run+=d[tau];c[tau]=run?d[tau]*tau/run:1}
+  for(let tau=Math.max(2,minLag);tau<maxLag;tau++){if(c[tau]<0.15){while(tau+1<maxLag&&c[tau+1]<c[tau])tau++;best=tau;break}}
+  if(best<0)return null;const a=c[best-1],b=c[best],e=c[best+1],den=a-2*b+e,sh=den?0.5*(a-e)/den:0;return sr/(best+sh);
+}
+function readRec(){
+  const b=mic.buf;if(mic.an.getFloatTimeDomainData)mic.an.getFloatTimeDomainData(b);
+  else{const u=new Uint8Array(2048);mic.an.getByteTimeDomainData(u);for(let i=0;i<2048;i++)b[i]=(u[i]-128)/128}
+  let r=0;for(let i=b.length-512;i<b.length;i++)r+=b[i]*b[i];r=Math.sqrt(r/512);
+  let m=null;if(r>0.008){const f=yinR(b,ctx.sampleRate);if(f)m=69+12*Math.log2(f/440)}
+  return {rms:r,m:m};
+}
+function pct(a,q){if(!a.length)return 0;const b=a.slice().sort((x,y)=>x-y);return b[Math.min(b.length-1,Math.floor(q*b.length))]}
+function levels(frames){const e=frames.map(f=>f.rms);const hi=pct(e,0.8),lo=Math.min(pct(e,0.15),hi*0.3);return {lo:lo,hi:hi,on:lo+0.5*(hi-lo),off:lo+0.25*(hi-lo),ok:hi>0.015}}
+function onsetsOf(frames,L){const out=[];let armed=true;frames.forEach(f=>{if(armed&&f.rms>L.on){out.push(f.t);armed=false}else if(f.rms<L.off)armed=true});return out}
+
+let rr=null,rrun=null,rP=null;
+function rAvail(n){if(n>S.ropen)return false;if(S.free||n===1)return true;return !!S.passed["R"+(n-1)]}
+function renderRecList(){
+  const ul=$("rcLevelList");if(!ul)return;ul.innerHTML="";
+  if(!S.ropen&&!S.free){ul.innerHTML=`<li class="note" style="list-style:none">老師還沒有開放直笛練習，上完直笛課後就會開放囉！</li>`}
+  RLEVELS.forEach(lv=>{const ok=rAvail(lv.id)||(S.free&&lv.id<=Math.max(S.ropen,6)&&preview),done=!!S.passed["R"+lv.id];
+    const st=done?"已過關 ★":ok?"可以練習":lv.id>S.ropen?"🔒 還沒開放":"🔒 先過前一關";
+    const li=document.createElement("li");
+    li.innerHTML=`<button class="lv ${done?"done":ok?"open":"lock"}"><span class="num">${lv.id}</span><span><span class="t">${lv.name}</span><br><span class="m">${lv.week}｜${lv.codes}</span></span><span class="st">${st}</span></button>`;
+    li.firstElementChild.onclick=()=>{if(ok&&needId())startRec(lv)};ul.appendChild(li)});
+}
+function rGen(lv,i){
+  if(lv.piece)return {kind:"phrase",piece:lv.piece};
+  if(lv.type==="head")return {kind:"head",piece:genCombo({cells:lv.cells,pool:[6],must:null})};
+  if(lv.type==="long"){let n;do{n=lv.pool[rnd(lv.pool.length)]}while(n===rGen.last&&lv.pool.length>1);rGen.last=n;return {kind:"long",note:n}}
+  if(lv.type==="mix"&&i<2)return {kind:"long",note:lv.newNote};
+  let p;for(let a=0;a<50;a++){p=genCombo({cells:lv.cells,pool:lv.pool,must:null});if(lv.newNote===undefined||p.onsets.some(o=>o.p===lv.newNote))break}
+  return {kind:"phrase",piece:p};
+}
+function startRec(lv){rr={lv:lv,i:0,best:[],qs:Array.from({length:lv.n},(_,i)=>rGen(lv,i))};show("recsec");showRQ()}
+function rDots(){$("rcDots").innerHTML=rr.lv.n<2?"":rr.qs.map((q,k)=>{const b=rr.best[k];return `<i class="${k===rr.i?"cur ":""}${b===undefined?"":b>=PASS?"g":b>=50?"y":"r"}"></i>`}).join("")}
+$("rcBack").onclick=()=>{cancelAnimationFrame(raf);rrun=null;recStop();releaseMic();renderHome();show("home")};
+function rTempo(){return rr.lv.tempo||Math.min(S.tempo,72)}
+function showRQ(){
+  cancelAnimationFrame(raf);rrun=null;const lv=rr.lv,q=rr.qs[rr.i];
+  $("rcTitle").textContent=lv.id==="CH"?"挑戰題｜"+lv.title:`直笛第${lv.id}關`;rDots();
+  $("rcResult").classList.add("hidden");$("rcAfter").classList.add("hidden");$("rcActions").classList.remove("hidden");
+  $("rcDemo").disabled=false;$("rcGo").disabled=false;
+  if(q.kind==="long"){
+    $("rcStaff").innerHTML=staffSvg([q.note],{minW:340,label:"要吹的音"});$("rcStaff").querySelector("svg").insertAdjacentHTML("beforeend",`<g class="marks"></g>`);
+    $("rcFing").innerHTML=fingSvg(q.note,true);
+    $("rcStatus").textContent=`吹長音 ${NAMES[q.note]}：跟著預備拍，平穩地吹滿 4 拍`;
+  }else if(q.kind==="head"){
+    rP=renderCombo(q.piece,$("rcStaff"),{perc:true});$("rcFing").innerHTML="";
+    $("rcStatus").textContent="只用笛頭，用「tu」吹出節奏";
+  }else{
+    rP=renderCombo(q.piece,$("rcStaff"));
+    const used=[...new Set(q.piece.onsets.map(o=>o.p))].sort((a,b)=>a-b);
+    $("rcFing").innerHTML=used.map(n=>fingSvg(n,false)).join("");
+    $("rcStatus").textContent="看樂譜吹奏，每個音都要用舌頭「tu」分開";
+  }
+  $("rcMicNote").textContent=mic.an?"":"第一次按「開始吹」時，瀏覽器會詢問能否使用麥克風，請按「允許」。";
+}
+$("rcDemo").onclick=()=>{ac();const q=rr.qs[rr.i],spb=60/rTempo(),t0=ctx.currentTime+0.1;
+  if(q.kind==="long")recTone(t0,q.note,2.4);
+  else if(q.kind==="head")q.piece.onsets.forEach(o=>headTone(t0+o.beat*spb,o.len*spb*0.85));
+  else q.piece.onsets.forEach(o=>recTone(t0+o.beat*spb,o.p,o.len*spb*0.85))};
+$("rcRetry").onclick=()=>showRQ();
+$("rcNext").onclick=()=>{if(rr.i<rr.lv.n-1){rr.i++;showRQ()}else rSummary()};
+$("rcHear").onclick=()=>{if(!recBuf)return;ac();const s=ctx.createBufferSource();s.buffer=recBuf;s.connect(ctx.destination);s.start()};
+$("rcGo").onclick=async()=>{
+  try{await ensureMic()}catch(e){$("rcMicNote").textContent=(e&&e.name==="NotAllowedError")?"沒有取得麥克風權限。請在瀏覽器設定中允許這個網頁使用麥克風，再重新整理。":"這個瀏覽環境不能使用麥克風。請改用 Safari 或 Chrome 直接開啟網址。";return}
+  $("rcMicNote").textContent="";rRun();
+};
+function rRun(){
+  const q=rr.qs[rr.i],spb=60/rTempo();$("rcDemo").disabled=true;$("rcGo").disabled=true;
+  document.querySelectorAll("#rcStaff .n").forEach(n=>n.classList.remove("ok","near","miss","on"));
+  document.querySelectorAll("#rcStaff .marks").forEach(g=>g.innerHTML="");
+  const ts=q.kind==="long"?4:(q.piece.ts||4),cnt=ts===2?4:ts,t0=ctx.currentTime+0.2;
+  for(let i=0;i<cnt;i++)click(t0+i*spb,i%ts===0,1);
+  const start=t0+cnt*spb,total=q.kind==="long"?4:q.piece.total,end=start+total*spb;
+  rrun={frames:[],start:start,spb:spb,end:end};let started=false;
+  const svgs=[...document.querySelectorAll("#rcStaff svg")],curs=[...document.querySelectorAll("#rcStaff .cursor")],notes=[...document.querySelectorAll("#rcStaff .n[data-i]")];
+  const fings=[...document.querySelectorAll("#rcFing .fing")];
+  const loop=()=>{if(!rrun)return;const now=ctx.currentTime;
+    if(now<start){const n=Math.min(cnt,Math.max(1,Math.floor((now-t0)/spb)+1));$("rcStatus").innerHTML=`<span class="count">${n}</span><br><span class="note">預備⋯⋯吹奏時節拍器會停下來</span>`;if(!started&&now>start-spb){started=true;recStart("rcHear")}if(now>start-spb){const fr=readRec();rrun.frames.push({t:now,rms:fr.rms,m:fr.m})}}
+    else if(now<end+0.25){
+      const beat=(now-start)/spb,fr=readRec();rrun.frames.push({t:now,rms:fr.rms,m:fr.m});
+      $("rcStatus").textContent=q.kind==="long"?`🎼 吹！（${Math.max(0,Math.ceil(total-beat))}）`:"🎼 吹！";
+      if(q.kind==="long"){
+        if(fr.m!==null){const svg=svgs[0],Wd=+svg.viewBox.baseVal.width,x=112+(Wd-124)*Math.min(1,beat/total),E=60+SEMI[q.note]+12;
+          svg.querySelector(".marks").insertAdjacentHTML("beforeend",`<circle class="vdot" cx="${x}" cy="${midiY(Math.max(E-14,Math.min(E+14,fr.m))-12)}" r="3"/>`)}
+      }else{
+        const P=rP(Math.min(beat,q.piece.total-0.01));curs.forEach((c,r)=>{c.style.opacity=r===P.row?"0.35":"0";c.setAttribute("x",P.x-3)});
+        let cur=null;notes.forEach(el=>{const o=q.piece.onsets[+el.dataset.i];const on=beat>=o.beat-0.05&&beat<o.beat+o.len*0.9;el.classList.toggle("on",on);if(on)cur=o});
+        fings.forEach(f=>f.classList.toggle("on",!!cur&&+f.dataset.n===cur.p));
+        if(q.kind==="phrase"&&fr.m!==null&&beat<q.piece.total){const o=cur||q.piece.onsets[0],E=60+SEMI[o.p]+12;
+          svgs[P.row].querySelector(".marks").insertAdjacentHTML("beforeend",`<circle class="vdot" cx="${P.x}" cy="${midiY(Math.max(E-14,Math.min(E+14,fr.m))-12)}" r="2.6"/>`)}
+      }
+    }else{cancelAnimationFrame(raf);recStop();curs.forEach(c=>c.style.opacity="0");notes.forEach(el=>el.classList.remove("on"));fings.forEach(f=>f.classList.remove("on"));
+      const r=rrun;rrun=null;(q.kind==="long"?rEvalLong:q.kind==="head"?rEvalHead:rEvalPhrase)(q,r);return}
+    raf=requestAnimationFrame(loop)};raf=requestAnimationFrame(loop);
+}
+function rEvalLong(q,r){
+  const E=60+SEMI[q.note]+12,win=r.frames.filter(f=>f.t>=r.start+0.5&&f.t<=r.end-0.15),L=levels(r.frames);
+  const voiced=win.filter(f=>f.m!==null&&f.rms>Math.max(L.off,0.01));
+  const sustain=win.length?voiced.length/win.length:0;
+  if(sustain<0.3||!L.ok)return rShow(0,"沒有聽到笛聲",["靠近麥克風一點，吹的時候要吹滿 4 拍。"]);
+  const ds=voiced.map(f=>f.m-E),near=ds.filter(d=>Math.abs(d)<1.5),over=ds.filter(d=>d>9&&d<15).length/ds.length;
+  const tips=[];let pitchPts=0,med=null;
+  if(near.length>=ds.length*0.5){med=median(near);const a=Math.abs(med);pitchPts=a<=0.5?1:a<=1?0.6:0.2}
+  else{const md=median(ds);const heard=Math.round(E+md-12);
+    if(over>0.4)tips.push("有破音，音跳得太高了。氣要輕輕、平穩地吹。");
+    else tips.push(`聽起來比較像 ${SOLF[((heard-60)%12+12)%12]}，檢查一下指法和按孔。`)}
+  let stab=0;if(near.length>3){const mu=near.reduce((s,x)=>s+x,0)/near.length;const sd=Math.sqrt(near.reduce((s,x)=>s+(x-mu)*(x-mu),0)/near.length);stab=sd<=0.2?1:sd<=0.4?0.5:0;if(sd>0.4)tips.push("聲音不太穩，試著用平穩均勻的氣流吹。")}
+  if(med!==null&&med<-0.5)tips.push("音有點偏低，可能是氣太弱，或按孔沒有壓緊。");
+  if(med!==null&&med>0.5)tips.push("音有點偏高，氣稍微吹輕一點。");
+  if(over>0.15&&over<=0.4)tips.push("中間有破音，氣不要突然太用力。");
+  if(sustain<0.8)tips.push("長音要吹滿 4 拍，中間不要斷掉。");
+  tips.push(`藍色小點是你的笛聲，越貼近音符的高度越準。`);
+  const sc=Math.round(100*(0.6*pitchPts+0.25*Math.min(1,sustain/0.85)+0.15*stab)*(over>0.15?0.85:1));
+  rShow(sc,sc>=90?"太棒了！音準又穩定。":sc>=80?"很不錯！":sc>=50?"再練一下就好。":"先聽示範，對照指法圖再試一次。",tips.slice(0,3));
+}
+function rLat(){return (S.calib?S.calib.offset:0)+0.03}
+function rEvalHead(q,r){
+  const p=q.piece,L=levels(r.frames);
+  if(!L.ok)return rShow(0,"沒有聽到笛聲",["靠近麥克風一點，每個音用「tu」吹清楚。"]);
+  const det=onsetsOf(r.frames,L).map(t=>t-rLat()),exp=p.onsets.map(o=>r.start+o.beat*r.spb);
+  const PERF=0.14,NEAR=0.25,WIN=0.32;const best=exp.map(()=>null);
+  det.forEach((t,k)=>{let j=-1,m=1e9;exp.forEach((e,jj)=>{const d=Math.abs(t-e);if(d<m){m=d;j=jj}});if(j>=0&&m<=WIN&&(!best[j]||Math.abs(best[j].d)>m))best[j]={d:t-exp[j],k:k}});
+  const used=new Set(best.filter(Boolean).map(b=>b.k));const extras=det.filter((t,k)=>!used.has(k)).map(t=>(t-r.start)/r.spb);
+  const gr=best.map(b=>!b?"miss":Math.abs(b.d)<=PERF?"ok":Math.abs(b.d)<=NEAR?"near":"miss");
+  const pts=gr.reduce((s,g)=>s+(g==="ok"?1:g==="near"?0.6:0),0);
+  const sc=Math.round(Math.max(0,(pts-0.5*extras.length)/exp.length)*100);
+  document.querySelectorAll("#rcStaff .n[data-i]").forEach(el=>el.classList.add(gr[+el.dataset.i]));
+  const tips=[];
+  if(extras.some(b=>p.cells.some(c=>c.rest&&b>=c.beat-0.1&&b<c.beat+c.dur-0.15)))tips.push("休止符要休息，那一拍不要吹。");
+  const shortH=p.onsets.filter(o=>o.len>=2).some(o=>{const s=r.start+(o.beat+0.4)*r.spb,e=r.start+(o.beat+o.len-0.2)*r.spb;const w=r.frames.filter(f=>f.t>=s&&f.t<=e);return w.length&&w.filter(f=>f.rms>L.off).length/w.length<0.5});
+  if(shortH)tips.push("二分音符要吹滿兩拍，不要太早停。");
+  const early=best.filter(b=>b&&b.d<-PERF).length,late=best.filter(b=>b&&b.d>PERF).length;
+  if(early>=2&&early>late)tips.push("有幾個音吹得太急了，跟著游標等一下再吹。");
+  if(late>=2&&late>early)tips.push("有幾個音慢了一點，眼睛先看好下一個音。");
+  if(gr.filter(g=>g==="miss").length>=2&&!tips.length)tips.push("有些音沒有吹出來，或兩個音黏在一起了，每個音都要用舌頭「tu」一下。");
+  rShow(sc,sc>=90?"太棒了！節奏很準。":sc>=80?"很不錯！":sc>=50?"再練一下就好。":"先聽示範再試一次。",tips.slice(0,2));
+}
+function rEvalPhrase(q,r){
+  const p=q.piece,L=levels(r.frames);
+  if(!L.ok)return rShow(0,"沒有聽到笛聲",["靠近麥克風一點，每個音都要吹出來。"]);
+  const det=onsetsOf(r.frames,L).map(t=>t-rLat());
+  let overN=0,untongued=0;const wrong=[];
+  const gr=p.onsets.map((o,i)=>{const s=r.start+o.beat*r.spb,d=o.len*r.spb,E=60+SEMI[o.p]+12;
+    const v=r.frames.filter(f=>f.t>=s+0.25*d+0.04&&f.t<=s+0.9*d&&f.m!==null&&f.rms>L.off).map(f=>f.m-E);
+    if(v.length<3)return {g:"miss",silent:true};
+    const md=median(v);const a=Math.abs(md);
+    let g=a<=0.5?"ok":a<=1?"near":"miss";if(md>9&&md<15)overN++;
+    if(g==="miss")wrong.push({i:i,heard:Math.round(E+md-12)});
+    let tongued=true;if(i>0)tongued=det.some(t=>t>=s-0.18&&t<=s+0.22);
+    if(!tongued&&p.onsets[i-1].p===o.p)untongued++;
+    return {g:g,tongued:tongued};
+  });
+  const pts=gr.reduce((s,x,i)=>{let v=x.g==="ok"?1:x.g==="near"?0.6:0;if(!x.silent&&!x.tongued)v*=i>0&&p.onsets[i-1].p===p.onsets[i].p?0.7:0.9;return s+v},0);
+  const sc=Math.round(pts/p.onsets.length*100);
+  document.querySelectorAll("#rcStaff .n[data-i]").forEach(el=>el.classList.add(gr[+el.dataset.i].g));
+  const tips=[];
+  if(overN)tips.push("有破音，氣吹得太用力了，輕輕吹就好。");
+  if(wrong.length){const w=wrong.find(x=>true);tips.push(`第 ${w.i+1} 個音應該是 ${NAMES[p.onsets[w.i].p]}，聽起來比較像 ${SOLF[((w.heard-60)%12+12)%12]}，對照指法圖檢查一下。`)}
+  if(untongued)tips.push("相同的音要用舌頭「tu」分開，不然聽起來會連在一起。");
+  const silent=gr.filter(x=>x.silent).length;if(silent)tips.push(`有 ${silent} 個音沒有吹出來，跟著游標把每個音吹清楚。`);
+  tips.push("藍色小點是你的笛聲，越貼近音符的高度越準。");
+  rShow(sc,sc>=90?"太棒了！音和節奏都很準。":sc>=80?"很不錯！":sc>=50?"再練一下就好。":"先聽示範，對照指法圖再試一次。",tips.slice(0,3));
+}
+function rShow(sc,head,tips){
+  $("rcScore").textContent=sc+" 分";$("rcStars").textContent=sc>=90?"★★★":sc>=80?"★★":sc>=50?"★":"";
+  $("rcHead").textContent=head;$("rcTips").innerHTML=tips.map(x=>`<li>${x}</li>`).join("");
+  $("rcResult").classList.remove("hidden");$("rcStatus").textContent="";
+  $("rcActions").classList.add("hidden");$("rcAfter").classList.remove("hidden");
+  rr.best[rr.i]=Math.max(rr.best[rr.i]||0,sc);rDots();
+  $("rcNext").textContent=rr.i<rr.lv.n-1?"下一題":"看這一輪成績";
+}
+function rSummary(){
+  cancelAnimationFrame(raf);rrun=null;const CH=rr.lv.id==="CH";
+  const avg=Math.round(rr.best.reduce((s,v)=>s+(v||0),0)/rr.lv.n),pass=avg>=PASS;
+  if(pass&&!CH)S.passed["R"+rr.lv.id]=true;
+  if(CH){S.chBest=S.chBest||{};S.chBest[rr.lv.chKey]=Math.max(S.chBest[rr.lv.chKey]||0,avg)}
+  logRec({d:Date.now(),name:CH?rr.lv.recName:`直笛第${rr.lv.id}關`,lv:CH?"CH":"R"+rr.lv.id,kind:CH?"CH":"RC",tempo:rTempo(),score:avg,pass:pass,who:S.cls+"-"+S.no});save();
+  $("rcStaff").innerHTML="";$("rcFing").innerHTML="";$("rcAfter").classList.add("hidden");$("rcActions").classList.add("hidden");$("rcStatus").textContent="這一輪的成績";
+  $("rcStars").textContent=pass?"★★★":"";$("rcScore").textContent=avg+" 分";$("rcHear").classList.add("hidden");
+  $("rcHead").textContent=CH?(pass?"挑戰成功！":`${PASS} 分以上就算挑戰成功，再試一次吧！`):pass?`過關了！直笛第 ${rr.lv.id} 關完成。`:`要 ${PASS} 分才能過關，再挑戰一次吧！`;
+  $("rcTips").innerHTML=`<div class="actions" style="margin-top:16px"><button class="btn" id="rcAgain">再吹一輪</button><button class="btn primary" id="rcHome">回到關卡</button></div>`;
+  $("rcResult").classList.remove("hidden");
+  $("rcAgain").onclick=()=>startRec(rr.lv);$("rcHome").onclick=()=>{releaseMic();renderHome();show("home")};
+}
+
 /* ================= 挑戰題 (teacher-made phrases) ================= */
 let challenges=null;
-const CHMODE={"節奏":{icon:"🥁",label:"拍節奏"},"琴鍵":{icon:"🎹",label:"琴鍵彈奏"},"唱歌":{icon:"🎤",label:"唱歌"}};
+const CHMODE={"節奏":{icon:"🥁",label:"拍節奏"},"琴鍵":{icon:"🎹",label:"琴鍵彈奏"},"唱歌":{icon:"🎤",label:"唱歌"},"直笛":{icon:"🎼",label:"直笛"}};
 function loadChallenges(){
   fetch(API+"?action=challenges&grade="+encodeURIComponent(GRADE)).then(r=>r.json()).then(o=>{challenges=o.items||[];renderChList()}).catch(()=>{if(challenges===null){challenges=[];renderChList(true)}});
 }
@@ -1467,6 +1730,7 @@ function startChallenge(c,m){
   const pool=[];for(let k=Math.min(lo,0);k<=Math.max(hi,4);k++)pool.push(k);
   const base={id:"CH",n:1,perc:rh,piece:piece,tempo:c.tempo,title:c.title,kind:"CH",chKey:c.id+"|"+m,recName:`挑戰題：${c.title}（${CHMODE[m].label}）`};
   if(m==="唱歌")startSing(Object.assign(base,{type:"sight"}));
+  else if(m==="直笛")startRec(Object.assign(base,{type:"phrase"}));
   else startCombo(Object.assign(base,{type:m==="節奏"?"tap":"play",pool:pool}));
 }
 
@@ -1479,7 +1743,7 @@ function needId(){
   if(!ok){window.scrollTo({top:0,behavior:"smooth"});(String(S.cls).trim()?$("no"):$("cls")).focus()}
   return ok;
 }
-function catOf(e){return e.kind==="CH"?"挑戰題":e.kind==="S"?"唱歌":e.kind==="J"?"綜合":String(e.lv).startsWith("M")?"旋律":"節奏"}
+function catOf(e){return e.kind==="RC"?"直笛":e.kind==="CH"?"挑戰題":e.kind==="S"?"唱歌":e.kind==="J"?"綜合":String(e.lv).startsWith("M")?"旋律":"節奏"}
 function logRec(e){
   S.history.push(e);if(S.history.length>200)S.history=S.history.slice(-200);
   if(preview)return;
@@ -1496,7 +1760,7 @@ function flush(){
 function loadSettings(){
   fetch(API+"?action=settings&grade="+encodeURIComponent(GRADE)).then(r=>r.json()).then(o=>{
     const c=(v,mx)=>Math.max(1,Math.min(mx,parseInt(v,10)||1));
-    S.open=c(o.rhythm,6);S.mopen=c(o.melody,5);S.jopen=c(o.combo,4);S.sopen=c(o.sing,4);save();renderHome();
+    S.open=c(o.rhythm,6);S.mopen=c(o.melody,5);S.jopen=c(o.combo,4);S.sopen=c(o.sing,4);S.ropen=Math.max(0,Math.min(6,parseInt(o.recorder,10)||0));save();renderHome();
   }).catch(()=>{});
 }
 function checkPreview(){

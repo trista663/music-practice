@@ -128,7 +128,7 @@ svg.ms .vdot{fill:#2F6FE4;opacity:.75}
           <label for="edTs">拍號</label><select id="edTs"><option value="2">2/4 拍</option><option value="3">3/4 拍</option><option value="4" selected>4/4 拍</option></select>
           <label for="edTempo">速度</label><select id="edTempo"><option value="60">♩=60（慢）</option><option value="72">♩=72（中）</option><option value="84">♩=84（快）</option></select>
           <span style="font-weight:700">練習方式</span>
-          <span class="row" id="edModes"><label><input type="checkbox" value="節奏" checked> 拍節奏</label><label><input type="checkbox" value="琴鍵" checked> 琴鍵彈奏</label><label><input type="checkbox" value="唱歌" checked> 唱歌</label></span>
+          <span class="row" id="edModes"><label><input type="checkbox" value="節奏" checked> 拍節奏</label><label><input type="checkbox" value="琴鍵" checked> 琴鍵彈奏</label><label><input type="checkbox" value="唱歌" checked> 唱歌</label><label><input type="checkbox" value="直笛" checked> 直笛</label></span>
         </div>
         <div class="staff" id="edStaff"></div>
         <p class="note" id="edInfo"></p>
@@ -177,9 +177,10 @@ const LEVELS={
   rhythm:{label:"節奏",list:["第1關 四分音符與休止符（三上第3週）","第2關 加入二分音符（三上第4週）","第3關 穩定拍（三上第5週）","第4關 加入八分音符（三上第7週）","第5關 加入全音符（三上第9週）","第6關 二四拍與四四拍（三上第12週）"]},
   melody:{label:"旋律",list:["第1關 認識 do、re、mi 的位置（三上第2週）","第2關 讀出 do～sol（三上第4週）","第3關 聽旋律找樂譜（三上第5週）","第4關 上行、下行、同音反覆（三上第18週）","第5關 曲調模仿（三上第19週）"]},
   combo:{label:"綜合",list:["第1關 看譜彈：四分音符＋do re mi（三上第3週）","第2關 看譜彈：加入二分音符（三上第4週）","第3關 看譜彈：加入八分音符（三上第7週）","第4關 聽辨節奏與曲調（三上第19週）"]},
-  sing:{label:"唱歌",list:["第1關 模唱單音（三上第1週）","第2關 看譜唱：do re mi（三上第3週）","第3關 看譜唱：do～sol（三上第4～5週）","第4關 聽了唱回來（三上第19週）"]}
+  sing:{label:"唱歌",list:["第1關 模唱單音（三上第1週）","第2關 看譜唱：do re mi（三上第3週）","第3關 看譜唱：do～sol（三上第4～5週）","第4關 聽了唱回來（三上第19週）"]},
+  recorder:{label:"直笛",zero:true,list:["第1關 笛頭吹節奏（三上第8週）","第2關 長音 si、la（三上第9週）","第3關 長音 sol、la、si（三上第14週）","第4關 看譜吹奏 si、la、sol（三上第14、17週）","第5關 高音 do（三下第7週）","第6關 高音 re（三下第18週）"]}
 };
-const CATS=["節奏","旋律","綜合","唱歌"];
+const CATS=["節奏","旋律","綜合","唱歌","直笛"];
 const $=id=>document.getElementById(id);
 let key="",data=null;
 
@@ -217,8 +218,8 @@ function load(){
 $("refresh").onclick=load;
 
 function renderSettings(){
-  $("setBox").innerHTML=Object.keys(LEVELS).map(k=>`<label for="s_${k}">${LEVELS[k].label}</label><select id="s_${k}">${LEVELS[k].list.map((t,i)=>`<option value="${i+1}">開放到 ${t}</option>`).join("")}</select>`).join("");
-  Object.keys(LEVELS).forEach(k=>{$("s_"+k).value=String(data.settings[k]||1)});
+  $("setBox").innerHTML=Object.keys(LEVELS).map(k=>`<label for="s_${k}">${LEVELS[k].label}</label><select id="s_${k}">${LEVELS[k].zero?`<option value="0">尚未開放</option>`:""}${LEVELS[k].list.map((t,i)=>`<option value="${i+1}">開放到 ${t}</option>`).join("")}</select>`).join("");
+  Object.keys(LEVELS).forEach(k=>{$("s_"+k).value=String(data.settings[k]!==undefined?data.settings[k]:(LEVELS[k].zero?0:1))});
   $("setMsg").textContent="";$("setMsg").className="msg";
 }
 $("saveSet").onclick=()=>{
@@ -379,7 +380,7 @@ const DURBTN=[["Q","四分音符"],["E","八分音符 ×2"],["H","二分音符"]
 const NP={E:2,S:4,DQE:2},PK=["p","p2","p3","p4"],MAXBARS=8;
 let ed=null;
 function loadCh(){
-  call({action:"listChallenges"}).then(r=>{if(r.ok){chItems=r.items;renderChTbl()}});
+  call({action:"listChallenges"}).then(r=>{if(r.ok){chItems=r.items||[];renderChTbl()}});
 }
 function renderChTbl(){
   $("chTbl").innerHTML=`<tr><th>標題</th><th>類型</th><th>拍號</th><th>練習方式</th><th>開放給學生</th><th></th></tr>`+

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>音樂練習室｜老師頁面</title>
+<style>
+:root{
+  --paper:#F4F7FC; --card:#FFFFFF; --ink:#1D2B4F; --muted:#5E6B85; --soft:#E3EAF5;
+  --pad:#FFC83D; --pad-deep:#E8A800; --ok:#1F9D6A; --miss:#D8483B; --focus:#2F6FE4;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){--paper:#111827;--card:#1A2336;--ink:#E6ECF7;--muted:#9CA8C0;--soft:#243049;--ok:#38C48B;--miss:#F06A5C;--focus:#7AA7FF}
+}
+:root[data-theme="dark"]{--paper:#111827;--card:#1A2336;--ink:#E6ECF7;--muted:#9CA8C0;--soft:#243049;--ok:#38C48B;--miss:#F06A5C;--focus:#7AA7FF}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"PingFang TC","Noto Sans TC","Microsoft JhengHei","Heiti TC",system-ui,sans-serif;font-size:16px;line-height:1.6}
+.wrap{max-width:900px;margin:0 auto;padding:20px 18px 48px}
+h1{font-size:28px;line-height:1.2;margin:4px 0 2px;font-weight:800}
+h2{font-size:19px;margin:0 0 10px;font-weight:800}
+.sub{color:var(--muted);margin:0}
+.panel{background:var(--card);border:1px solid var(--soft);border-radius:18px;padding:16px 18px;margin-top:16px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.hidden{display:none!important}
+button,input,select{font:inherit;color:var(--ink)}
+button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+input,select{background:var(--paper);border:2px solid var(--soft);border-radius:10px;padding:7px 10px}
+.btn{border:0;border-radius:12px;padding:9px 16px;font-weight:700;background:var(--soft);cursor:pointer;white-space:nowrap;text-decoration:none;display:inline-block}
+a.btn{color:var(--ink)}
+.btn.primary{background:var(--ink);color:var(--paper)}
+.btn:disabled{opacity:.45;cursor:default}
+.note{font-size:14px;color:var(--muted)}
+.msg{font-size:14px;font-weight:700;min-height:22px}
+.msg.ok{color:var(--ok)} .msg.err{color:var(--miss)}
+.set{display:grid;grid-template-columns:auto 1fr;gap:10px 14px;align-items:center}
+.set label{font-weight:700;white-space:nowrap}
+.set select{width:100%;max-width:420px}
+.tbl{overflow-x:auto;margin-top:10px}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:15px}
+th,td{padding:7px 8px;border-bottom:1px solid var(--soft);text-align:left;white-space:nowrap}
+th{color:var(--muted);font-weight:600;position:sticky;top:0;background:var(--card)}
+td.none{color:var(--muted)}
+.pass{color:var(--ok);font-weight:700}
+.stat{display:flex;gap:18px;flex-wrap:wrap;margin-top:6px}
+.stat b{font-size:22px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>音樂練習室｜老師頁面</h1>
+  <p class="sub">三年級・翰林版上學期</p>
+
+  <!-- login -->
+  <section id="login" class="panel">
+    <h2>老師登入</h2>
+    <p class="note" style="margin-top:0">密碼就是試算表「設定」工作表中「老師預覽密碼」那一格。</p>
+    <div class="row">
+      <input id="pw" type="password" autocomplete="current-password" placeholder="老師密碼" aria-label="老師密碼">
+      <button class="btn primary" id="loginBtn">登入</button>
+    </div>
+    <p class="msg err" id="loginMsg"></p>
+  </section>
+
+  <div id="main" class="hidden">
+    <div class="row" style="margin-top:14px">
+      <button class="btn" id="refresh">重新整理資料</button>
+      <a class="btn" id="previewLink" target="_blank" rel="noopener">開啟學生頁（預覽模式）</a>
+      <button class="btn" id="logout">登出</button>
+      <span class="note" id="loadedAt"></span>
+    </div>
+
+    <section class="panel">
+      <h2>開放進度</h2>
+      <p class="note" style="margin-top:0">全年級同步。儲存後，學生下次打開或重新整理網頁就會生效。</p>
+      <div class="set" id="setBox"></div>
+      <div class="row" style="margin-top:14px">
+        <button class="btn primary" id="saveSet">儲存開放進度</button>
+        <span class="msg" id="setMsg"></span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>各班練習狀況</h2>
+      <div class="row">
+        <label for="clsSel" style="font-weight:700">班級</label>
+        <select id="clsSel"></select>
+      </div>
+      <div class="stat" id="clsStat"></div>
+      <p class="note">各類別顯示該生「已過關的最高關卡」。</p>
+      <div class="tbl"><table id="clsTbl"></table></div>
+    </section>
+
+    <section class="panel">
+      <h2>最近 30 筆練習紀錄</h2>
+      <div class="tbl"><table id="recentTbl"></table></div>
+    </section>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+const API="https://script.google.com/macros/s/AKfycbxzzNw9TdW4LGnPvK9YH63bw9fZAU17gA6Ztx9sGDBhd3BwWSjIBROU98JPUlOUqNlj/exec";
+const GRADE="三年級";
+const STUDENT_URL="https://trista663.github.io/music-practice/grade3.html";
+const LEVELS={
+  rhythm:{label:"節奏",list:["第1關 四分音符與休止符（三上第3週）","第2關 加入二分音符（三上第4週）","第3關 穩定拍（三上第5週）","第4關 加入八分音符（三上第7週）","第5關 加入全音符（三上第9週）","第6關 二四拍與四四拍（三上第12週）"]},
+  melody:{label:"旋律",list:["第1關 認識 do、re、mi 的位置（三上第2週）","第2關 讀出 do～sol（三上第4週）","第3關 聽旋律找樂譜（三上第5週）","第4關 上行、下行、同音反覆（三上第18週）","第5關 曲調模仿（三上第19週）"]},
+  combo:{label:"綜合",list:["第1關 看譜彈：四分音符＋do re mi（三上第3週）","第2關 看譜彈：加入二分音符（三上第4週）","第3關 看譜彈：加入八分音符（三上第7週）","第4關 聽辨節奏與曲調（三上第19週）"]},
+  sing:{label:"唱歌",list:["第1關 模唱單音（三上第1週）","第2關 看譜唱：do re mi（三上第3週）","第3關 看譜唱：do～sol（三上第4～5週）","第4關 聽了唱回來（三上第19週）"]}
+};
+const CATS=["節奏","旋律","綜合","唱歌"];
+const $=id=>document.getElementById(id);
+let key="",data=null;
+
+function call(body){
+  return fetch(API,{method:"POST",body:JSON.stringify(Object.assign({grade:GRADE,key:key},body))}).then(r=>r.json());
+}
+function errText(e){return e==="locked"?"密碼錯誤次數太多，請 10 分鐘後再試。":e==="badkey"?"密碼不正確。":"發生錯誤，請稍後再試。"}
+
+/* login */
+function login(pw){
+  key=pw;$("loginBtn").disabled=true;$("loginMsg").textContent="登入中⋯⋯";
+  call({action:"login"}).then(r=>{
+    $("loginBtn").disabled=false;
+    if(!r.ok){$("loginMsg").textContent=errText(r.error);key="";try{sessionStorage.removeItem("tkey")}catch(e){}return}
+    try{sessionStorage.setItem("tkey",pw)}catch(e){}
+    $("loginMsg").textContent="";$("login").classList.add("hidden");$("main").classList.remove("hidden");
+    $("previewLink").href=STUDENT_URL+"?t="+encodeURIComponent(pw);
+    load();
+  }).catch(()=>{$("loginBtn").disabled=false;$("loginMsg").textContent="無法連線到後台，請確認網路後再試。"});
+}
+$("loginBtn").onclick=()=>{const v=$("pw").value.trim();if(v)login(v)};
+$("pw").addEventListener("keydown",e=>{if(e.key==="Enter")$("loginBtn").click()});
+$("logout").onclick=()=>{key="";data=null;try{sessionStorage.removeItem("tkey")}catch(e){}$("pw").value="";$("main").classList.add("hidden");$("login").classList.remove("hidden")};
+
+/* load data */
+function load(){
+  $("refresh").disabled=true;$("loadedAt").textContent="讀取中⋯⋯";
+  call({action:"getData"}).then(r=>{
+    $("refresh").disabled=false;
+    if(!r.ok){$("loadedAt").textContent=errText(r.error);return}
+    data=r;const d=new Date();$("loadedAt").textContent=`資料更新於 ${d.getHours()}:${String(d.getMinutes()).padStart(2,"0")}`;
+    renderSettings();renderClasses();renderRecent();
+  }).catch(()=>{$("refresh").disabled=false;$("loadedAt").textContent="讀取失敗，請按「重新整理資料」再試。"});
+}
+$("refresh").onclick=load;
+
+function renderSettings(){
+  $("setBox").innerHTML=Object.keys(LEVELS).map(k=>`<label for="s_${k}">${LEVELS[k].label}</label><select id="s_${k}">${LEVELS[k].list.map((t,i)=>`<option value="${i+1}">開放到 ${t}</option>`).join("")}</select>`).join("");
+  Object.keys(LEVELS).forEach(k=>{$("s_"+k).value=String(data.settings[k]||1)});
+  $("setMsg").textContent="";$("setMsg").className="msg";
+}
+$("saveSet").onclick=()=>{
+  const body={action:"saveSettings"};Object.keys(LEVELS).forEach(k=>body[k]=+$("s_"+k).value);
+  $("saveSet").disabled=true;$("setMsg").className="msg";$("setMsg").textContent="儲存中⋯⋯";
+  call(body).then(r=>{$("saveSet").disabled=false;
+    if(r.ok){$("setMsg").className="msg ok";$("setMsg").textContent="已儲存。";Object.keys(LEVELS).forEach(k=>data.settings[k]=body[k])}
+    else{$("setMsg").className="msg err";$("setMsg").textContent=errText(r.error)}
+  }).catch(()=>{$("saveSet").disabled=false;$("setMsg").className="msg err";$("setMsg").textContent="儲存失敗，請再試一次。"});
+};
+
+/* rows: [time, cls, no, kind, level, tempo, score, pass] */
+const lvNum=s=>{const m=String(s).match(/第(\d+)關/);return m?+m[1]:0};
+const fmt=iso=>{const d=new Date(iso);return isNaN(d)?iso:`${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,"0")}`};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function renderClasses(){
+  const classes=[...new Set(data.rows.map(r=>r[1]))].sort();
+  const sel=$("clsSel"),prev=sel.value;
+  if(!classes.length){sel.innerHTML="<option>尚無紀錄</option>";$("clsTbl").innerHTML="";$("clsStat").innerHTML="";return}
+  sel.innerHTML=classes.map(c=>`<option value="${esc(c)}">${esc(c)} 班</option>`).join("");
+  if(classes.includes(prev))sel.value=prev;
+  renderClass();
+}
+$("clsSel").onchange=()=>renderClass();
+function renderClass(){
+  const c=$("clsSel").value,rows=data.rows.filter(r=>r[1]===c);
+  const maxNo=Math.max(...rows.map(r=>r[2]),1);
+  const stu={};
+  rows.forEach(r=>{const s=stu[r[2]]||(stu[r[2]]={n:0,last:"",best:{}});s.n++;if(r[0]>s.last)s.last=r[0];
+    if(r[7]==="是"){const k=r[3],v=lvNum(r[4]);if(v&&v>(s.best[k]||0))s.best[k]=v}});
+  const active=Object.keys(stu).length,week=Date.now()-7*864e5;
+  const activeWeek=Object.values(stu).filter(s=>new Date(s.last).getTime()>week).length;
+  $("clsStat").innerHTML=`<span><b>${active}</b> 位學生有練習紀錄</span><span><b>${activeWeek}</b> 位最近 7 天有練習</span><span><b>${rows.length}</b> 筆紀錄</span>`;
+  let h=`<tr><th>座號</th><th>練習次數</th><th>最近練習</th>${CATS.map(k=>`<th>${k}</th>`).join("")}</tr>`;
+  for(let no=1;no<=maxNo;no++){const s=stu[no];
+    if(!s){h+=`<tr><td>${no}</td><td class="none" colspan="${2+CATS.length}">尚未練習</td></tr>`;continue}
+    h+=`<tr><td>${no}</td><td>${s.n}</td><td>${fmt(s.last)}</td>${CATS.map(k=>s.best[k]?`<td class="pass">第${s.best[k]}關 ✓</td>`:`<td class="none">—</td>`).join("")}</tr>`}
+  $("clsTbl").innerHTML=h;
+}
+function renderRecent(){
+  const rows=data.rows.slice(-30).reverse();
+  $("recentTbl").innerHTML=`<tr><th>時間</th><th>班級</th><th>座號</th><th>類別</th><th>關卡</th><th>分數</th><th>過關</th></tr>`+
+    (rows.length?rows.map(r=>`<tr><td>${fmt(r[0])}</td><td>${esc(r[1])}</td><td>${r[2]}</td><td>${esc(r[3])}</td><td>${esc(r[4])}</td><td>${r[6]}</td><td>${r[7]==="是"?'<span class="pass">是</span>':"否"}</td></tr>`).join(""):`<tr><td colspan="7" class="none">目前還沒有練習紀錄。</td></tr>`);
+}
+
+/* auto login within this browser tab */
+try{const k=sessionStorage.getItem("tkey");if(k)login(k)}catch(e){}
+})();
+</script>
+</body>
+</html>

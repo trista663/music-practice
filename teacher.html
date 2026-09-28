@@ -124,6 +124,7 @@ svg.ms .vdot{fill:#2F6FE4;opacity:.75}
         <h2 id="edHead">新增挑戰題</h2>
         <div class="set">
           <label for="edTitle">標題</label><input id="edTitle" maxlength="40" placeholder="例如：第三課 節奏挑戰">
+          <label for="edKind">題目類型</label><select id="edKind"><option value="rhythm">只有節奏（不需要音高）</option><option value="melody">節奏＋音高</option></select>
           <label for="edTs">拍號</label><select id="edTs"><option value="2">2/4 拍</option><option value="3">3/4 拍</option><option value="4" selected>4/4 拍</option></select>
           <label for="edTempo">速度</label><select id="edTempo"><option value="60">♩=60（慢）</option><option value="72">♩=72（中）</option><option value="84">♩=84（快）</option></select>
           <span style="font-weight:700">練習方式</span>
@@ -131,9 +132,9 @@ svg.ms .vdot{fill:#2F6FE4;opacity:.75}
         </div>
         <div class="staff" id="edStaff"></div>
         <p class="note" id="edInfo"></p>
-        <p style="font-weight:700;margin:10px 0 4px">① 音高 <span class="note" style="font-weight:400">（先選音高再加音符；要修改某個音，先點樂譜上的那個音，再按正確的音高）</span></p>
-        <div class="row" id="edPitch"></div>
-        <p style="font-weight:700;margin:14px 0 4px">② 加入音符</p>
+        <div id="edPitchBox"><p style="font-weight:700;margin:10px 0 4px">① 音高 <span class="note" style="font-weight:400">（先選音高再加音符；要修改某個音，先點樂譜上的那個音，再按正確的音高）</span></p>
+        <div class="row" id="edPitch"></div></div>
+        <p style="font-weight:700;margin:14px 0 4px" id="edDurLabel">② 加入音符</p>
         <div class="row" id="edDur"></div>
         <div class="row" style="margin-top:14px">
           <button class="btn" id="edUndo">刪除最後一個</button>
@@ -324,7 +325,7 @@ const JPAD=16,JVH=140;let JBW=58;
 function stemSvg(x,y,down,len){len=len||40;return down?`<line class="stem" x1="${x-8}" y1="${y+1}" x2="${x-8}" y2="${y+len}"/>`:`<line class="stem" x1="${x+8}" y1="${y-1}" x2="${x+8}" y2="${y-len}"/>`}
 function dotSvg(x,n){const y=yOf(n)-(n%2===0?SS/2:0);return `<circle class="clefdot" cx="${x+15}" cy="${y}" r="2.6"/>`}
 function renderCombo(p,box,o){
-  o=o||{};const MAXB=(box.clientWidth||600)<560?4:8;
+  o=o||{};const MAXB=(box.clientWidth||600)<560?4:8;const PERC=!!o.perc;
   JBW=o.bw||(p.cells.some(c=>c.type==="S")?78:58);
   const bb=b=>b.reduce((s,c)=>s+cdur(c.t,p.ts),0);
   const rows=[];let cur=[],cb=0;
@@ -333,7 +334,7 @@ function renderCombo(p,box,o){
   const lay=[];const barStart=[];let bs=0;p.bars.forEach(b=>{barStart.push(bs);bs+=bb(b)});
   const rowG=[];let maxW=0;
   rows.forEach((ri,r)=>{
-    let x=r===0?90:62;let g=CLEF;
+    let x=r===0?90:62;let g=PERC?`<rect class="beam" x="22" y="${TOP+SS}" width="5" height="${2*SS}"/><rect class="beam" x="32" y="${TOP+SS}" width="5" height="${2*SS}"/>`:CLEF;
     if(r===0)g+=`<text class="tsn" x="72" y="${TOP+SS+10}">${p.ts}</text><text class="tsn" x="72" y="${TOP+3*SS+10}">4</text>`;
     ri.forEach(bi=>{const beats=bb(p.bars[bi]);const x0=x+JPAD;lay.push({row:r,x0:x0,sb:barStart[bi],beats:beats});x=x0+beats*JBW+2;
       if(bi===p.bars.length-1)g+=`<line class="bl" x1="${x-6}" y1="${TOP}" x2="${x-6}" y2="${BOT}"/><line class="blt" x1="${x}" y1="${TOP}" x2="${x}" y2="${BOT}"/>`;
@@ -347,11 +348,11 @@ function renderCombo(p,box,o){
     const q=P(c.beat),x=q.x;let s="";
     if(c.type==="R"){const y=TOP+SS*1.2;s=`<g class="n r"><polyline class="rest" points="${x-4},${y} ${x+5},${y+11} ${x-4},${y+21} ${x+5},${y+32}"/><path class="rest" d="M${x+5},${y+32} q-11,-4 -7,9"/></g>`}
     else if(c.type==="HR"){s=`<g class="n r"><rect class="beam" x="${x-9}" y="${TOP+2*SS-6}" width="18" height="6"/></g>`}
-    else if(c.type==="WR"){const cx=q.L.x0+q.L.beats*JBW/2;s=`<g class="n r"><rect class="beam" x="${cx-9}" y="${TOP+SS}" width="18" height="6"/></g>`}
+    else if(c.type==="WR"){const cx=q.L.x0+q.L.beats*JBW/2;s=`<g class="n r"><rect class="beam" x="${cx-9}" y="${PERC?TOP+2*SS:TOP+SS}" width="18" height="6"/></g>`}
     else{
       const idx=byCell.get(c)||[];const ons=idx.map(i=>p.onsets[i]);
       const xs=ons.map(on=>P(on.beat).x),ys=ons.map(on=>yOf(on.p));
-      const avg=ons.reduce((s2,on)=>s2+on.p,0)/Math.max(1,ons.length);const down=avg>=6;
+      const avg=ons.reduce((s2,on)=>s2+on.p,0)/Math.max(1,ons.length);const down=!PERC&&avg>=6;
       if(c.type==="E"||c.type==="S"){
         const edge=down?Math.max(...ys)+38:Math.min(...ys)-38;
         ons.forEach((on,k)=>{const x1=xs[k],y1=ys[k];s+=`<g class="n" data-i="${idx[k]}">${ledger(x1,on.p)}${headM(x1,y1)}${down?`<line class="stem" x1="${x1-8}" y1="${y1+1}" x2="${x1-8}" y2="${edge}"/>`:`<line class="stem" x1="${x1+8}" y1="${y1-1}" x2="${x1+8}" y2="${edge}"/>`}</g>`});
@@ -360,16 +361,16 @@ function renderCombo(p,box,o){
         s+=down?beam(edge-6):beam(edge);
         if(c.type==="S")s+=down?beam(edge-15):beam(edge+9);
       }else if(c.type==="DQE"){
-        const [a,b]=ons;const d1=a.p>=6,d2=b.p>=6;
+        const [a,b]=ons;const d1=!PERC&&a.p>=6,d2=!PERC&&b.p>=6;
         s+=`<g class="n" data-i="${idx[0]}">${ledger(xs[0],a.p)}${headM(xs[0],ys[0])}${stemSvg(xs[0],ys[0],d1)}${dotSvg(xs[0],a.p)}</g>`;
         const fx=d2?xs[1]-8:xs[1]+8,fy=d2?ys[1]+40:ys[1]-40;
         s+=`<g class="n" data-i="${idx[1]}">${ledger(xs[1],b.p)}${headM(xs[1],ys[1])}${stemSvg(xs[1],ys[1],d2)}<path class="stem" d="M${fx},${fy} q10,${d2?-8:8} 8,${d2?-22:22}"/></g>`;
       }else if(c.type==="W"){const on=ons[0];s=`<g class="n" data-i="${idx[0]}">${ledger(x,on.p)}${headM(x,ys[0],true,true)}</g>`}
-      else{const on=ons[0],hol=c.type==="H"||c.type==="DH";s=`<g class="n" data-i="${idx[0]}">${ledger(x,on.p)}${headM(x,ys[0],hol)}${stemSvg(x,ys[0],on.p>=6)}${c.type==="DH"?dotSvg(x,on.p):""}</g>`}
+      else{const on=ons[0],hol=c.type==="H"||c.type==="DH";s=`<g class="n" data-i="${idx[0]}">${ledger(x,on.p)}${headM(x,ys[0],hol)}${stemSvg(x,ys[0],!PERC&&on.p>=6)}${c.type==="DH"?dotSvg(x,on.p):""}</g>`}
     }
     notes[q.row]+=s;
   });
-  box.innerHTML=rowG.map((rw,r)=>`<svg class="ms" viewBox="0 0 ${maxW} ${JVH}" role="img" aria-label="樂譜第${r+1}行"><rect class="cursor" x="0" y="6" width="6" height="${JVH-24}" rx="3"/>${staffLines(4,rw.end)}${rw.g}${notes[r]}<g class="marks"></g></svg>`).join("");
+  box.innerHTML=rowG.map((rw,r)=>`<svg class="ms" viewBox="0 0 ${maxW} ${JVH}" role="img" aria-label="樂譜第${r+1}行"><rect class="cursor" x="0" y="6" width="6" height="${JVH-24}" rx="3"/>${PERC?`<line class="sl5" x1="4" y1="${TOP+2*SS}" x2="${rw.end}" y2="${TOP+2*SS}"/>`:staffLines(4,rw.end)}${rw.g}${notes[r]}<g class="marks"></g></svg>`).join("");
   return P;
 }
 
@@ -381,8 +382,8 @@ function loadCh(){
   call({action:"listChallenges"}).then(r=>{if(r.ok){chItems=r.items;renderChTbl()}});
 }
 function renderChTbl(){
-  $("chTbl").innerHTML=`<tr><th>標題</th><th>拍號</th><th>練習方式</th><th>開放給學生</th><th></th></tr>`+
-   (chItems.length?chItems.map((c,i)=>`<tr><td>${esc(c.title)}</td><td>${c.ts}/4</td><td>${esc(c.modes.join("、"))}</td><td><input type="checkbox" data-open="${i}" ${c.open?"checked":""} aria-label="開放"></td><td><button class="btn" data-edit="${i}">編輯</button> <button class="btn" data-del="${i}">刪除</button></td></tr>`).join(""):`<tr><td colspan="5" class="none">還沒有挑戰題。</td></tr>`);
+  $("chTbl").innerHTML=`<tr><th>標題</th><th>類型</th><th>拍號</th><th>練習方式</th><th>開放給學生</th><th></th></tr>`+
+   (chItems.length?chItems.map((c,i)=>`<tr><td>${esc(c.title)}</td><td>${c.kind==="rhythm"?"只有節奏":"節奏＋音高"}</td><td>${c.ts}/4</td><td>${esc(c.modes.join("、"))}</td><td><input type="checkbox" data-open="${i}" ${c.open?"checked":""} aria-label="開放"></td><td><button class="btn" data-edit="${i}">編輯</button> <button class="btn" data-del="${i}">刪除</button></td></tr>`).join(""):`<tr><td colspan="6" class="none">還沒有挑戰題。</td></tr>`);
   $("chTbl").querySelectorAll("[data-open]").forEach(el=>el.onchange=()=>{const c=chItems[+el.dataset.open];saveItem(Object.assign({},c,{open:el.checked}),el.checked?"已開放給學生。":"已對學生隱藏。")});
   $("chTbl").querySelectorAll("[data-edit]").forEach(el=>el.onclick=()=>openEd(chItems[+el.dataset.edit]));
   $("chTbl").querySelectorAll("[data-del]").forEach(el=>el.onclick=()=>{const c=chItems[+el.dataset.del];if(!confirm(`確定刪除「${c.title}」？`))return;
@@ -394,11 +395,15 @@ function saveItem(item,okText,after){
 }
 $("chNew").onclick=()=>openEd(null);
 function openEd(c){
-  ed={id:c?c.id:null,open:c?c.open:true,ts:c?c.ts:4,bars:c?JSON.parse(JSON.stringify(c.bars)):[[]],cur:2,sel:null};
+  ed={id:c?c.id:null,open:c?c.open:true,ts:c?c.ts:4,kind:c?(c.kind||"melody"):"rhythm",bars:c?JSON.parse(JSON.stringify(c.bars)):[[]],cur:2,sel:null};
+  $("edKind").value=ed.kind;
   $("edHead").textContent=c?"編輯挑戰題":"新增挑戰題";$("edTitle").value=c?c.title:"";$("edTs").value=String(ed.ts);$("edTempo").value=String(c?c.tempo:60);
   $("edModes").querySelectorAll("input").forEach(i=>i.checked=c?c.modes.includes(i.value):true);
   $("edMsg").textContent="";$("ed").classList.remove("hidden");edRender();$("ed").scrollIntoView({behavior:"smooth"});
 }
+$("edKind").onchange=()=>{ed.kind=$("edKind").value;ed.sel=null;
+  if(ed.kind==="melody")ed.bars.forEach(b=>b.forEach(c=>{if(RESTS[c.t])return;for(let k=0;k<(NP[c.t]||1);k++)if(c[PK[k]]===undefined)c[PK[k]]=ed.cur}));
+  edRender()};
 $("edCancel").onclick=()=>{$("ed").classList.add("hidden");ed=null};
 $("edTs").onchange=()=>{const v=+$("edTs").value;if(ed.bars.some(b=>b.length)&&!confirm("更改拍號會清除目前輸入的音符，確定嗎？")){$("edTs").value=String(ed.ts);return}ed.ts=v;ed.bars=[[]];ed.sel=null;edRender()};
 const barUsed=b=>b.reduce((s,c)=>s+cdur(c.t,ed.ts),0);
@@ -413,12 +418,15 @@ function refs(){const out=[];ed.bars.forEach(b=>b.forEach(c=>{if(RESTS[c.t])retu
 function addCell(t){
   if(!fits(t))return;
   let last=ed.bars[ed.bars.length-1];if(barUsed(last)===ed.ts){last=[];ed.bars.push(last)}
-  const c={t:t};if(!RESTS[t])for(let k=0;k<(NP[t]||1);k++)c[PK[k]]=ed.cur;
+  const c={t:t};if(!RESTS[t]&&ed.kind==="melody")for(let k=0;k<(NP[t]||1);k++)c[PK[k]]=ed.cur;
   last.push(c);
-  if(!RESTS[t]){ac();pnote(ctx.currentTime+0.02,FREQ[ed.cur],0.4)}ed.sel=null;
+  if(!RESTS[t]){ac();ed.kind==="melody"?pnote(ctx.currentTime+0.02,FREQ[ed.cur],0.4):pnote(ctx.currentTime+0.02,FREQ[4],0.25)}ed.sel=null;
   edRender();
 }
+function viewBars(bars){return ed.kind==="rhythm"?bars.map(b=>b.map(x=>{const y=Object.assign({},x);PK.forEach(k=>y[k]=6);return y})):bars}
 function edRender(){
+  const rh=ed.kind==="rhythm";$("edPitchBox").classList.toggle("hidden",rh);$("edDurLabel").textContent=rh?"加入音符":"② 加入音符";
+  $("edModes").querySelectorAll("input").forEach(i=>{if(i.value!=="節奏"){i.disabled=rh;if(rh)i.checked=false}});
   $("edPitch").innerHTML=NAMES.map((n,i)=>`<button class="btn pbtn${i===ed.cur?" cur":""}" data-p="${i}">${n}</button>`).join("");
   $("edPitch").querySelectorAll("button").forEach(b=>b.onclick=()=>{
     ed.cur=+b.dataset.p;ac();pnote(ctx.currentTime+0.02,FREQ[ed.cur],0.5);
@@ -427,11 +435,12 @@ function edRender(){
   $("edDur").innerHTML=DURBTN.map(([k,l])=>`<button class="btn" data-t="${k}" ${fits(k)?"":"disabled"}>${l}</button>`).join("");
   $("edDur").querySelectorAll("button").forEach(b=>b.onclick=()=>addCell(b.dataset.t));
   const bars=ed.bars.filter(b=>b.length);
-  if(!bars.length){$("edStaff").innerHTML=`<p class="note" style="padding:24px;text-align:center">先選音高，再點下方的音符加入樂句。</p>`}
+  if(!bars.length){$("edStaff").innerHTML=`<p class="note" style="padding:24px;text-align:center">${rh?"點下方的音符加入節奏。":"先選音高，再點下方的音符加入樂句。"}</p>`}
   else{
-    const piece=buildCombo(bars,ed.ts);renderCombo(piece,$("edStaff"),{});
+    const piece=buildCombo(viewBars(bars),ed.ts);renderCombo(piece,$("edStaff"),{perc:rh});
     $("edStaff").querySelectorAll(".n[data-i]").forEach(el=>{const i=+el.dataset.i;if(i===ed.sel)el.classList.add("on");
       try{const bb=el.getBBox();el.insertAdjacentHTML("afterbegin",`<rect x="${bb.x-6}" y="${bb.y-6}" width="${bb.width+12}" height="${bb.height+12}" fill="transparent"/>`)}catch(e){}
+      if(rh)return;
       el.onclick=()=>{ed.sel=i;const r=refs()[i];ed.cur=r.c[r.k];ac();pnote(ctx.currentTime+0.02,FREQ[ed.cur],0.5);edRender()}});
   }
   const last=ed.bars[ed.bars.length-1],u=barUsed(last),n=ed.bars.filter(b=>b.length).length;
@@ -439,17 +448,18 @@ function edRender(){
 }
 $("edUndo").onclick=()=>{let last=ed.bars[ed.bars.length-1];if(!last.length&&ed.bars.length>1){ed.bars.pop();last=ed.bars[ed.bars.length-1]}last.pop();if(!last.length&&ed.bars.length>1)ed.bars.pop();ed.sel=null;edRender()};
 $("edClear").onclick=()=>{if(confirm("確定清除全部音符？")){ed.bars=[[]];ed.sel=null;edRender()}};
-$("edPlay").onclick=()=>{const bars=ed.bars.filter(b=>b.length);if(!bars.length)return;ac();const p=buildCombo(bars,ed.ts),spb=60/+$("edTempo").value,t0=ctx.currentTime+0.2;
-  p.onsets.forEach(o=>pnote(t0+o.beat*spb,FREQ[o.p],o.len*spb*0.9))};
+$("edPlay").onclick=()=>{const bars=ed.bars.filter(b=>b.length);if(!bars.length)return;ac();const p=buildCombo(viewBars(bars),ed.ts),spb=60/+$("edTempo").value,t0=ctx.currentTime+0.2;
+  p.onsets.forEach(o=>pnote(t0+o.beat*spb,FREQ[ed.kind==="rhythm"?4:o.p],o.len*spb*0.9))};
 $("edSave").onclick=()=>{
   const title=$("edTitle").value.trim(),modes=[...$("edModes").querySelectorAll("input:checked")].map(i=>i.value);
   const bars=ed.bars.filter(b=>b.length),last=bars[bars.length-1];
   if(!title)return msg("edMsg","請輸入標題。",false);
   if(!modes.length)return msg("edMsg","請至少勾選一種練習方式。",false);
-  if(!bars.length||!buildCombo(bars,ed.ts).onsets.length)return msg("edMsg","請至少輸入一個音符。",false);
+  if(!bars.length||!buildCombo(viewBars(bars),ed.ts).onsets.length)return msg("edMsg","請至少輸入一個音符。",false);
   if(barUsed(last)!==ed.ts)return msg("edMsg",`最後一小節還差 ${ed.ts-barUsed(last)} 拍，請補滿。`,false);
   $("edSave").disabled=true;msg("edMsg","儲存中⋯⋯",true);
-  saveItem({id:ed.id,title:title,ts:ed.ts,tempo:+$("edTempo").value,modes:modes,bars:bars,open:ed.open},"挑戰題已儲存。",()=>{$("ed").classList.add("hidden");ed=null}).then(()=>{$("edSave").disabled=false});
+  const clean=ed.kind==="rhythm"?bars.map(b=>b.map(c=>({t:c.t}))):bars;
+  saveItem({id:ed.id,kind:ed.kind,title:title,ts:ed.ts,tempo:+$("edTempo").value,modes:ed.kind==="rhythm"?["節奏"]:modes,bars:clean,open:ed.open},"挑戰題已儲存。",()=>{$("ed").classList.add("hidden");ed=null}).then(()=>{$("edSave").disabled=false});
 };
 
 /* auto login within this browser tab */

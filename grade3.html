@@ -174,6 +174,7 @@ svg.ms .vdot{fill:#2F6FE4;opacity:.75}
   <h1>音樂練習室</h1>
   <p class="sub">三年級・翰林版上學期</p>
   <p class="note" id="pianoSt" style="margin:4px 0 0"></p>
+  <p class="note hidden" id="previewBar" style="margin:4px 0 0;color:var(--miss);font-weight:700">老師預覽模式：所有已開放關卡都能直接進入，練習紀錄不會送出。</p>
 
   <div class="panel">
     <div class="row">
@@ -183,6 +184,7 @@ svg.ms .vdot{fill:#2F6FE4;opacity:.75}
       <input id="no" type="number" inputmode="numeric" placeholder="座號" aria-label="座號">
       <span>號</span>
     </div>
+    <p class="note hidden" id="idHint" style="margin:8px 0 0;color:var(--miss)">請先填好班級（例如 301）和座號，才能開始練習。</p>
   </div>
 
   <div class="tabs" role="tablist" aria-label="練習類別">
@@ -229,7 +231,7 @@ svg.ms .vdot{fill:#2F6FE4;opacity:.75}
   <h2>我的練習紀錄</h2>
   <div class="panel" id="histBox"></div>
 
-  <p style="text-align:center;margin-top:28px"><button class="link" id="teacherBtn">老師設定</button></p>
+  <p class="note" style="text-align:center;margin-top:24px">開放的關卡由音樂老師設定。</p>
 </section>
 
 <!-- CALIBRATION -->
@@ -351,23 +353,6 @@ svg.ms .vdot{fill:#2F6FE4;opacity:.75}
 </section>
 </div>
 
-<dialog id="tDlg">
-  <h2 style="margin-top:0">老師設定</h2>
-  <label for="tOpen">節奏開放到第幾關</label>
-  <select id="tOpen"></select>
-  <label for="tMOpen">旋律開放到第幾關</label>
-  <select id="tMOpen"></select>
-  <label for="tJOpen">綜合開放到第幾關</label>
-  <select id="tJOpen"></select>
-  <label for="tSOpen">唱歌開放到第幾關</label>
-  <select id="tSOpen"></select>
-  <label style="font-weight:400"><input type="checkbox" id="tFree"> 不必依序過關（方便老師預覽）</label>
-  <p class="note">這個雛型把設定和紀錄存在這台裝置的瀏覽器裡。正式版會改由 Google 試算表統一設定，並把全班紀錄寫回試算表。</p>
-  <div class="actions" style="justify-content:space-between;margin-top:16px">
-    <button class="btn" id="tClear">清除這台裝置的紀錄</button>
-    <button class="btn primary" id="tSave">儲存</button>
-  </div>
-</dialog>
 
 <script>
 (function(){
@@ -389,7 +374,7 @@ const WEIGHT={Q:3,R:1.2,H:1.6,E:2.2,W:1.2};
 const QN=5, PASS=80;
 
 let S=load();
-function def(){return {cls:"",no:"",tempo:60,calib:null,open:3,mopen:3,jopen:2,sopen:3,tab:"rhythm",free:false,passed:{},history:[]}}
+function def(){return {cls:"",no:"",tempo:60,calib:null,open:3,mopen:3,jopen:2,sopen:3,tab:"rhythm",free:false,passed:{},history:[],queue:[]}}
 function load(){try{const v=JSON.parse(localStorage.getItem(KEY));return v?Object.assign(def(),v):def()}catch(e){return def()}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 
@@ -550,20 +535,20 @@ function renderHome(){
     li.innerHTML=`<button class="lv ${done?"done":ok?"open":"lock"}" ${ok?"":"aria-disabled=\"true\""}>
       <span class="num">${lv.id}</span><span><span class="t">${lv.name}</span><br><span class="m">${lv.week}｜${lv.codes}</span></span>
       <span class="st">${st}</span></button>`;
-    li.firstElementChild.onclick=()=>{if(ok)startLevel(lv)};
+    li.firstElementChild.onclick=()=>{if(ok&&needId())startLevel(lv)};
     ul.appendChild(li);
   });
   const cOk=S.open>=4&&(S.free||S.passed[4]);
   const li=document.createElement("li");
   li.innerHTML=`<button class="lv ${cOk?"open":"lock"}"><span class="num">★</span><span><span class="t">挑戰：${CHALLENGE.name}</span><br><span class="m">${CHALLENGE.week}｜${CHALLENGE.codes}</span></span><span class="st">${cOk?"可以練習":"🔒 過第4關後開放"}</span></button>`;
-  li.firstElementChild.onclick=()=>{if(cOk)openBuilder()};
+  li.firstElementChild.onclick=()=>{if(cOk&&needId())openBuilder()};
   ul.appendChild(li);
   // history
   const h=S.history.slice(-8).reverse();
   $("histBox").innerHTML=h.length?`<table class="hist"><tr><th>日期</th><th>關卡</th><th>類別</th><th>分數</th></tr>${h.map(r=>{const d=new Date(r.d);return `<tr><td>${d.getMonth()+1}/${d.getDate()}</td><td>${r.name}</td><td>${r.kind==="S"?"唱歌":r.kind==="J"?"綜合":String(r.lv).startsWith("M")?"旋律":"節奏"}</td><td>${r.score}${r.pass?" ✓":""}</td></tr>`}).join("")}</table>`:`<p class="note" style="margin:0">還沒有紀錄。從第 1 關開始練習吧！</p>`;
 }
-$("cls").onchange=e=>{S.cls=e.target.value;save()};
-$("no").onchange=e=>{S.no=e.target.value;save()};
+$("cls").onchange=e=>{S.cls=e.target.value.trim();save();if(!$("idHint").classList.contains("hidden"))needId()};
+$("no").onchange=e=>{S.no=e.target.value.trim();save();if(!$("idHint").classList.contains("hidden"))needId()};
 document.querySelectorAll("#tempoSeg button").forEach(b=>b.onclick=()=>{S.tempo=+b.dataset.t;save();renderHome()});
 $("calBtn").onclick=()=>{$("calStatus").textContent="";show("cal")};
 
@@ -727,7 +712,7 @@ function showResult(res){
   const b=round.best[round.i];round.best[round.i]=b===null?s:Math.max(b,s);renderDots();
   if(round.single){
     $("pNext").textContent="再編一個";
-    S.history.push({d:Date.now(),name:"自己編節奏",lv:"C",tempo:S.tempo,score:s,pass:s>=PASS,who:S.cls+"-"+S.no});save();
+    logRec({d:Date.now(),name:"自己編節奏",lv:"C",tempo:S.tempo,score:s,pass:s>=PASS,who:S.cls+"-"+S.no});save();
   }else $("pNext").textContent=round.i<QN-1?"下一題":"看這一輪成績";
 }
 
@@ -735,7 +720,7 @@ function summary(){
   stopAll();
   const avg=Math.round(round.best.reduce((a,b)=>a+(b||0),0)/QN),pass=avg>=PASS;
   if(pass)S.passed[round.lv.id]=true;
-  S.history.push({d:Date.now(),name:`第${round.lv.id}關`,lv:round.lv.id,tempo:S.tempo,score:avg,pass:pass,who:S.cls+"-"+S.no});save();
+  logRec({d:Date.now(),name:`第${round.lv.id}關`,lv:round.lv.id,tempo:S.tempo,score:avg,pass:pass,who:S.cls+"-"+S.no});save();
   $("staff").innerHTML="";$("legend").classList.add("hidden");$("pAfter").classList.add("hidden");$("pActions").classList.add("hidden");
   $("rStars").textContent=pass?"★★★":"";
   $("rScore").textContent=avg+" 分";
@@ -868,12 +853,12 @@ function renderMelList(){
     const st=done?"已過關 ★":ok?"可以練習":lv.id>S.mopen?"🔒 還沒開放":"🔒 先過前一關";
     const li=document.createElement("li");
     li.innerHTML=`<button class="lv ${done?"done":ok?"open":"lock"}"><span class="num">${lv.id}</span><span><span class="t">${lv.name}</span><br><span class="m">${lv.week}｜${lv.codes}</span></span><span class="st">${st}</span></button>`;
-    li.firstElementChild.onclick=()=>{if(ok)startMel(lv)};ul.appendChild(li);
+    li.firstElementChild.onclick=()=>{if(ok&&needId())startMel(lv)};ul.appendChild(li);
   });
   const cOk=S.mopen>=5&&(S.free||S.passed.M5);
   const li=document.createElement("li");
   li.innerHTML=`<button class="lv ${cOk?"open":"lock"}"><span class="num">★</span><span><span class="t">挑戰：${MCHAL.name}</span><br><span class="m">${MCHAL.week}｜${MCHAL.codes}</span></span><span class="st">${cOk?"可以練習":"🔒 過第5關後開放"}</span></button>`;
-  li.firstElementChild.onclick=()=>{if(cOk)startMel(MCHAL)};ul.appendChild(li);
+  li.firstElementChild.onclick=()=>{if(cOk&&needId())startMel(MCHAL)};ul.appendChild(li);
 }
 document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{S.tab=b.dataset.tab;save();renderHome()});
 
@@ -960,7 +945,7 @@ function mAnswered(ok,msg){
   $("mFeedback").innerHTML=`<div class="${ok?"fb-ok":"fb-no"}">${ok?"✓":"✗"} ${msg}</div>`;$("mFeedback").classList.remove("hidden");
   $("mNextRow").classList.remove("hidden");
   const last=mr.i>=mr.lv.n-1;
-  if(mr.lv.id==="C"){$("mNext").textContent="再接一次";S.history.push({d:Date.now(),name:"曲調接力",lv:"MC",tempo:"-",score:ok?100:0,pass:ok,who:S.cls+"-"+S.no});save()}
+  if(mr.lv.id==="C"){$("mNext").textContent="再接一次";logRec({d:Date.now(),name:"曲調接力",lv:"MC",tempo:"-",score:ok?100:0,pass:ok,who:S.cls+"-"+S.no});save()}
   else $("mNext").textContent=last?"看這一輪成績":"下一題";
 }
 $("mNext").onclick=()=>{
@@ -969,7 +954,7 @@ $("mNext").onclick=()=>{
   if(mr.i<mr.lv.n-1){mr.i++;showMQ();return}
   const right=mr.res.filter(Boolean).length,score=Math.round(right/mr.lv.n*100),pass=score>=PASS;
   if(pass)S.passed["M"+mr.lv.id]=true;
-  S.history.push({d:Date.now(),name:`旋律第${mr.lv.id}關`,lv:"M"+mr.lv.id,tempo:"-",score:score,pass:pass,who:S.cls+"-"+S.no});save();
+  logRec({d:Date.now(),name:`旋律第${mr.lv.id}關`,lv:"M"+mr.lv.id,tempo:"-",score:score,pass:pass,who:S.cls+"-"+S.no});save();
   $("mStaff").classList.add("hidden");$("mAnswer").innerHTML="";$("mPlayRow").classList.add("hidden");$("mNextRow").classList.add("hidden");
   $("mPrompt").textContent="這一輪的成績";
   $("mFeedback").innerHTML=`<div class="stars">${pass?"★★★":""}</div><div class="score">${right} / ${mr.lv.n}</div><div style="font-weight:700;margin-top:6px">${pass?`過關了！旋律第 ${mr.lv.id} 關完成。`:`要答對 ${Math.ceil(mr.lv.n*PASS/100)} 題才能過關，再挑戰一次吧！`}</div><div class="actions" style="margin-top:16px"><button class="btn" id="mAgain">再玩一輪</button><button class="btn primary" id="mHome">回到關卡</button></div>`;
@@ -992,7 +977,7 @@ function renderComboList(){
     const st=done?"已過關 ★":ok?"可以練習":lv.id>S.jopen?"🔒 還沒開放":"🔒 先過前一關";
     const li=document.createElement("li");
     li.innerHTML=`<button class="lv ${done?"done":ok?"open":"lock"}"><span class="num">${lv.id}</span><span><span class="t">${lv.name}</span><br><span class="m">${lv.week}｜${lv.codes}</span></span><span class="st">${st}</span></button>`;
-    li.firstElementChild.onclick=()=>{if(ok)startCombo(lv)};ul.appendChild(li);
+    li.firstElementChild.onclick=()=>{if(ok&&needId())startCombo(lv)};ul.appendChild(li);
   });
 }
 /* piece: bars of {t,p,p2} */
@@ -1219,7 +1204,7 @@ function jSummary(){
   cancelAnimationFrame(raf);jrun=null;
   const avg=Math.round(jr.best.reduce((s,v)=>s+(v||0),0)/jr.n),pass=avg>=PASS;
   if(pass)S.passed["J"+jr.lv.id]=true;
-  S.history.push({d:Date.now(),name:`綜合第${jr.lv.id}關`,lv:"J"+jr.lv.id,kind:"J",tempo:jr.lv.type==="listen"?"-":S.tempo,score:avg,pass:pass,who:S.cls+"-"+S.no});save();
+  logRec({d:Date.now(),name:`綜合第${jr.lv.id}關`,lv:"J"+jr.lv.id,kind:"J",tempo:jr.lv.type==="listen"?"-":S.tempo,score:avg,pass:pass,who:S.cls+"-"+S.no});save();
   ["jStaff","jStaff2","jChoices","jKeys"].forEach(id=>$(id).innerHTML="");$("jKeyHint").classList.add("hidden");
   $("jActions").classList.add("hidden");$("jAfter").classList.add("hidden");$("jStatus").textContent="這一輪的成績";
   $("jStars").textContent=pass?"★★★":"";$("jScore").textContent=jr.lv.type==="listen"?`${jr.best.filter(v=>v===100).length} / ${jr.n}`:avg+" 分";
@@ -1244,7 +1229,7 @@ function renderSingList(){
     const st=done?"已過關 ★":ok?"可以練習":lv.id>S.sopen?"🔒 還沒開放":"🔒 先過前一關";
     const li=document.createElement("li");
     li.innerHTML=`<button class="lv ${done?"done":ok?"open":"lock"}"><span class="num">${lv.id}</span><span><span class="t">${lv.name}</span><br><span class="m">${lv.week}｜${lv.codes}</span></span><span class="st">${st}</span></button>`;
-    li.firstElementChild.onclick=()=>{if(ok)startSing(lv)};ul.appendChild(li)});
+    li.firstElementChild.onclick=()=>{if(ok&&needId())startSing(lv)};ul.appendChild(li)});
 }
 /* mic + YIN pitch detection */
 let mic={};
@@ -1405,7 +1390,7 @@ function sSummary(){
   cancelAnimationFrame(raf);srun=null;
   const avg=Math.round(sr_.best.reduce((s,v)=>s+(v||0),0)/sr_.lv.n),pass=avg>=SPASS;
   if(pass)S.passed["S"+sr_.lv.id]=true;
-  S.history.push({d:Date.now(),name:`唱歌第${sr_.lv.id}關`,lv:"S"+sr_.lv.id,kind:"S",tempo:"-",score:avg,pass:pass,who:S.cls+"-"+S.no});save();
+  logRec({d:Date.now(),name:`唱歌第${sr_.lv.id}關`,lv:"S"+sr_.lv.id,kind:"S",tempo:"-",score:avg,pass:pass,who:S.cls+"-"+S.no});save();
   $("sStaff").innerHTML="";$("sAfter").classList.add("hidden");$("sActions").classList.add("hidden");$("sStatus").textContent="這一輪的成績";
   $("sStars").textContent=pass?"★★★":"";$("sScore").textContent=avg+" 分";$("sHear").classList.add("hidden");
   $("sHead").textContent=pass?`過關了！唱歌第 ${sr_.lv.id} 關完成。`:`要 ${SPASS} 分才能過關，再挑戰一次吧！`;
@@ -1414,16 +1399,45 @@ function sSummary(){
   $("sAgain").onclick=()=>startSing(sr_.lv);$("sHome").onclick=()=>{releaseMic();renderHome();show("home")};
 }
 
-/* ---------- teacher ---------- */
-$("tOpen").innerHTML=LEVELS.map(l=>`<option value="${l.id}">第 ${l.id} 關（${l.week}）</option>`).join("");
-$("tMOpen").innerHTML=MLEVELS.map(l=>`<option value="${l.id}">第 ${l.id} 關（${l.week}）</option>`).join("");
-$("tSOpen").innerHTML=SLEVELS.map(l=>`<option value="${l.id}">第 ${l.id} 關（${l.week}）</option>`).join("");
-$("tJOpen").innerHTML=JLEVELS.map(l=>`<option value="${l.id}">第 ${l.id} 關（${l.week}）</option>`).join("");
-$("teacherBtn").onclick=()=>{$("tOpen").value=S.open;$("tMOpen").value=S.mopen;$("tJOpen").value=S.jopen;$("tSOpen").value=S.sopen;$("tFree").checked=S.free;$("tDlg").showModal()};
-$("tSave").onclick=()=>{S.open=+$("tOpen").value;S.mopen=+$("tMOpen").value;S.jopen=+$("tJOpen").value;S.sopen=+$("tSOpen").value;S.free=$("tFree").checked;save();$("tDlg").close();renderHome()};
-$("tClear").onclick=()=>{if(confirm("確定要清除這台裝置上的過關與練習紀錄嗎？")){const keep={open:S.open,mopen:S.mopen,jopen:S.jopen,sopen:S.sopen,tab:S.tab,free:S.free,calib:S.calib,tempo:S.tempo};S=Object.assign(def(),keep);save();$("tDlg").close();renderHome()}};
+/* ================= BACKEND (Google Sheet via Apps Script) ================= */
+const API="https://script.google.com/macros/s/AKfycbxzzNw9TdW4LGnPvK9YH63bw9fZAU17gA6Ztx9sGDBhd3BwWSjIBROU98JPUlOUqNlj/exec",GRADE="三年級";
+let preview=false,flushing=false;
+function needId(){
+  const ok=/^3\d{2}$/.test(String(S.cls).trim())&&+S.no>=1&&+S.no<=40;
+  $("idHint").classList.toggle("hidden",ok);
+  if(!ok){window.scrollTo({top:0,behavior:"smooth"});(String(S.cls).trim()?$("no"):$("cls")).focus()}
+  return ok;
+}
+function catOf(e){return e.kind==="S"?"唱歌":e.kind==="J"?"綜合":String(e.lv).startsWith("M")?"旋律":"節奏"}
+function logRec(e){
+  S.history.push(e);if(S.history.length>200)S.history=S.history.slice(-200);
+  if(preview)return;
+  S.queue=S.queue||[];
+  S.queue.push({grade:GRADE,cls:String(S.cls).trim(),no:+S.no,kind:catOf(e),level:e.name,tempo:e.tempo==="-"?"":e.tempo,score:e.score,pass:!!e.pass});
+  save();setTimeout(flush,50);
+}
+function flush(){
+  if(flushing||!S.queue||!S.queue.length)return;flushing=true;
+  fetch(API,{method:"POST",body:JSON.stringify(S.queue[0])}).then(r=>r.text()).then(tx=>{
+    flushing=false;if(tx.trim()==="ok"){S.queue.shift();save();flush()}
+  }).catch(()=>{flushing=false});
+}
+function loadSettings(){
+  fetch(API+"?action=settings&grade="+encodeURIComponent(GRADE)).then(r=>r.json()).then(o=>{
+    const c=(v,mx)=>Math.max(1,Math.min(mx,parseInt(v,10)||1));
+    S.open=c(o.rhythm,6);S.mopen=c(o.melody,5);S.jopen=c(o.combo,4);S.sopen=c(o.sing,4);save();renderHome();
+  }).catch(()=>{});
+}
+function checkPreview(){
+  const k=new URLSearchParams(location.search).get("t");if(!k)return;
+  fetch(API+"?action=preview&grade="+encodeURIComponent(GRADE)+"&key="+encodeURIComponent(k)).then(r=>r.json()).then(o=>{
+    if(o.ok){preview=true;S.free=true;$("previewBar").classList.remove("hidden");renderHome()}
+  }).catch(()=>{});
+}
+S.free=false;
 
 renderHome();
+loadSettings();checkPreview();flush();window.addEventListener("online",flush);
 try{const AC=window.AudioContext||window.webkitAudioContext;try{ctx=new AC({latencyHint:"interactive"})}catch(e){ctx=new AC()}loadPiano()}catch(e){pianoFail=true}
 pianoStatus();
 })();
